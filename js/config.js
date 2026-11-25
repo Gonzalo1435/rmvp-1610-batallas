@@ -10,10 +10,10 @@ export const ALLIANCE = {
 };
 
 export const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "",
+  apiKey: "AIzaSyBSTwLmMZubFOWvtR9TjCfy0fFxLd_TGjw",
+  authDomain: "rvmps-d2d69.firebaseapp.com",
+  projectId: "rvmps-d2d69",
+  storageBucket: "rvmps-d2d69.firebasestorage.app",
+  messagingSenderId: "600184438241",
+  appId: "1:600184438241:web:6a015a2eecc486eaee26a0",
 };
