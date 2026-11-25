@@ -1,0 +1,49 @@
+rules_version = '2';
+// Reglas de seguridad de Firestore para la web de la alianza.
+// Cópialas en Firebase → Firestore Database → Reglas → Publicar.
+//
+// - Cualquiera con el link (sesión anónima automática) puede VER todo
+//   y guardar SU inscripción (estado, preferencia, nota).
+// - Solo los R4 (correos de Google en config/admins) pueden editar
+//   miembros, eventos, equipos, mapa y roles.
+// - El primer R4 que entra con Google puede "tomar control" una sola vez.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function email() { return request.auth.token.email; }
+    function adminsPath() { return /databases/$(database)/documents/config/admins; }
+    function isAdmin() {
+      return signedIn() && email() != null && exists(adminsPath())
+        && email().lower() in get(adminsPath()).data.emails;
+    }
+    function signupOnly(keys) { return keys.hasOnly(['status', 'pref', 'note', 'updatedAt']); }
+
+    match /config/admins {
+      allow read: if signedIn();
+      allow create: if signedIn() && email() != null
+        && request.resource.data.emails == [email().lower()];
+      allow update, delete: if isAdmin();
+    }
+
+    match /members/{memberId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    match /events/{eventId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+
+      match /players/{memberId} {
+        allow read: if signedIn();
+        allow write: if isAdmin();
+        allow create: if signedIn() && signupOnly(request.resource.data.keys())
+          && request.resource.data.note.size() <= 140;
+        allow update: if signedIn()
+          && signupOnly(request.resource.data.diff(resource.data).affectedKeys())
+          && request.resource.data.note.size() <= 140;
+      }
+    }
+  }
+}
