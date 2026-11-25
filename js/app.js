@@ -262,7 +262,7 @@ function viewMap(ev) {
   const panel = sel ? `<div class="card objpanel">
       <div class="row between"><h3>${esc(L(sel))}</h3><button class="x" data-action="selObj" data-id="">✕</button></div>
       <ul class="plist">${onObj(sel.id).map((m) => `<li><span class="nm">${esc(m.name)}</span><span class="muted">${fmtP(m.power)}</span>${teams.length ? `<span class="chip">${esc(pl(m.id).team)}</span>` : ""}${isAdmin() ? `<button class="x" data-action="setObj" data-id="${esc(m.id)}" data-obj="">✕</button>` : ""}</li>`).join("") || `<li class="muted">—</li>`}</ul>
-      ${isAdmin() ? `<label>${t("assignTo")} ${esc(L(sel))}<select data-change="addToObj" data-obj="${esc(sel.id)}"><option value="">+ …</option>${cands.map((m) => `<option value="${esc(m.id)}">${esc(m.name)} · ${fmtP(m.power)}${pl(m.id).objective ? " ↺" : ""}</option>`).join("")}</select></label>
+      ${isAdmin() ? `<label>${t("assignTo")} ${esc(L(sel))}<select data-change="addToObj" data-obj="${esc(sel.id)}"><option value="">${free.length ? `+ … (${free.length})` : t("allAssigned")}</option>${free.map((m) => `<option value="${esc(m.id)}">${esc(m.name)} · ${fmtP(m.power)}${teams.length ? ` · ${esc(pl(m.id).team)}` : ""}</option>`).join("")}</select></label>
       <div class="row"><button class="btn sm ghost" data-action="renameObj" data-id="${esc(sel.id)}">${t("edit")}</button><button class="btn sm danger" data-action="delObj" data-id="${esc(sel.id)}">${t("delete")}</button></div>` : ""}
     </div>` : "";
   return `
@@ -281,7 +281,10 @@ function viewMap(ev) {
       ${S.maps[ev.type]?.img ? `<button class="btn sm ghost" data-action="removeMapImage" data-type="${esc(ev.type)}">${t("mapBgRemove")}</button>` : ""}</div>
       <p class="hint">${t("mapBgHelp")}</p>` : ""}
     <div class="card"><h3>${t("unassigned")} <small class="muted">(${free.length})</small></h3>
-      <div class="tags">${free.map((m) => `<span class="tag">${esc(m.name)} <small>${fmtP(m.power)}</small></span>`).join("")}</div></div>`;
+      ${isAdmin() && sel ? `<p class="hint">👆 ${t("tapToAssign")} <b>${esc(L(sel))}</b></p>` : ""}
+      <div class="tags">${free.map((m) => isAdmin() && sel
+        ? `<button class="tag tap" data-action="setObj" data-id="${esc(m.id)}" data-obj="${esc(sel.id)}">${esc(m.name)} <small>${fmtP(m.power)}</small></button>`
+        : `<span class="tag">${esc(m.name)} <small>${fmtP(m.power)}</small></span>`).join("")}</div></div>`;
 }
 
 function applyMapBg(evId) {

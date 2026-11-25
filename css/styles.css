@@ -184,3 +184,6 @@ td.stars { white-space: nowrap; font-size: .8rem; }
 .copybox code { flex: 1; font-size: .82rem; white-space: pre-wrap; color: var(--text); }
 details.card summary { cursor: pointer; }
 .span4 { grid-column: 1 / -1; }
+
+button.tag.tap { cursor: pointer; color: var(--text); font: inherit; font-size: .8rem; }
+button.tag.tap:hover { border-color: var(--gold); background: #2a2414; }
