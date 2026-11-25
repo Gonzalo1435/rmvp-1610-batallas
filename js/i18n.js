@@ -33,7 +33,10 @@ const DICT = {
     roleBarroHelp: "Pelear: rallies y ataques a objetivos débiles. Nadie pelea contra la ballena.",
     roleGuarnHelp: "Escudo puesto y tropas reforzando cañones, castillo o compañeros.",
     full: "lleno", back: "Volver", saveError: "No se pudo guardar",
-    out: "No estará", notFound: "Ese nombre no está en la lista de miembros",
+    out: "No estará", faction: "Facción", f_dawn: "Madrugadores", f_rule: "Gobernadores",
+    f_dawn_help: "en equipo con otra alianza (2 vs 1)", f_rule_help: "una alianza sola contra dos (1 vs 2)",
+    ally: "Alianza aliada (solo Madrugadores)", allyHint: "Ej: [ABC] o servidor", with: "con", mapBg: "Subir imagen del mapa", mapBgRemove: "Quitar imagen",
+    mapBgHelp: "Sube una captura del mapa real del juego. Queda para todas las batallas de este tipo. Después arrastra cada objetivo encima de su edificio.", notFound: "Ese nombre no está en la lista de miembros",
   },
   en: {
     appTitle: "Battle center",
@@ -68,7 +71,10 @@ const DICT = {
     roleBarroHelp: "Fight: rallies and attacks on weaker targets. Nobody fights the whale.",
     roleGuarnHelp: "Shield up and troops reinforcing cannons, castle or teammates.",
     full: "full", back: "Back", saveError: "Could not save",
-    out: "Not available", notFound: "That name is not on the member list",
+    out: "Not available", faction: "Faction", f_dawn: "Dawnbreakers", f_rule: "Rulebringers",
+    f_dawn_help: "teamed with another alliance (2 vs 1)", f_rule_help: "one alliance alone against two (1 vs 2)",
+    ally: "Allied alliance (Dawnbreakers only)", allyHint: "e.g. [ABC] or server", with: "with", mapBg: "Upload map image", mapBgRemove: "Remove image",
+    mapBgHelp: "Upload a screenshot of the real in-game map. It is used for every battle of this type. Then drag each objective onto its building.", notFound: "That name is not on the member list",
   },
 };
 

@@ -91,6 +91,9 @@ button.chip { cursor: pointer; padding: 5px 12px; font-size: .82rem; }
 .s-maybe { background: #332a12; border-color: #5c4a19; color: #f6d77d; }
 .s-no { background: #3a1a1a; border-color: #6b2a2a; color: #ffb4b4; }
 .s-none { color: var(--muted); }
+.f-dawn { background: #3a2a14; border-color: #7a5420; color: #ffd08a; margin-top: 4px; }
+.f-rule { background: #2a1f3d; border-color: #5a3f8a; color: #d8c4ff; margin-top: 4px; }
+.hero-chips { margin-top: 4px; }
 .r-barro { background: #3a2414; border-color: #6b3d1c; color: #ffbf8f; }
 .r-guarnicion { background: #142a3d; border-color: #1f4a6b; color: #9fd0ff; }
 .r-flexible { background: #2a2140; border-color: #45376b; color: #cbb8ff; }
@@ -141,6 +144,9 @@ ol.plist li::before { counter-increment: n; content: counter(n); color: var(--mu
 .map.t-desert { background-color: #3b2f1c; }
 .map.t-canyon { background-color: #1c3330; }
 .map.t-svs { background-color: #2b1d22; }
+.map.has-bg { background-size: 100% 100%; background-repeat: no-repeat; background-position: center; }
+.map.has-bg .obj { background: rgba(15,19,26,.78); }
+.filebtn { display: inline-flex; align-items: center; gap: 4px; }
 .obj { position: absolute; transform: translate(-50%, -50%); width: max-content; min-width: 74px; max-width: 120px; text-align: center; background: rgba(15,19,26,.88);
   border: 1.5px solid var(--line); border-radius: 10px; padding: 5px 6px; cursor: pointer; user-select: none; touch-action: none; }
 .obj.has { border-color: var(--gold); }

@@ -7,7 +7,7 @@ import { SEED_MEMBERS } from "./seed.js";
 /* ---------------- state & helpers ---------------- */
 const S = {
   ready: false,
-  members: [], events: [], players: {}, playersEventId: null, unsubPlayers: null,
+  members: [], events: [], maps: {}, players: {}, playersEventId: null, unsubPlayers: null,
   admins: [],
   ui: { mapTeam: "all", selObj: null, rolesContact: "", onlyPending: false, memberSearch: "",
         showNewEvent: false, editMember: null, showAllPool: false },
@@ -69,7 +69,7 @@ function render(force = false) {
   else main = viewEvents();
   app.innerHTML = viewHeader(r) + (store.mode === "demo" ? viewDemoBanner() : "") +
     (store.error ? `<div class="banner bad">${esc(store.error)}</div>` : "") + `<main>${main}</main>`;
-  if (r.page === "event" && r.tab === "map") attachMapDrag(r.id);
+  if (r.page === "event" && r.tab === "map") { applyMapBg(r.id); attachMapDrag(r.id); }
 }
 app.addEventListener("focusout", () => setTimeout(() => { if (pending) render(); }, 0));
 
@@ -108,6 +108,7 @@ function viewEvents() {
         <label>${t("time")}<input type="time" name="time" data-keep></label>
         <label>${t("enemy")}<input name="enemy" data-keep></label>
       </div>
+      <div class="grid2 canyon-only" hidden>${factionFields()}</div>
       <div class="row"><button class="btn gold">${t("create")}</button><button type="button" class="btn ghost" data-action="toggleNewEvent">${t("cancel")}</button></div>
     </form>` : "";
   return `
@@ -120,7 +121,7 @@ function viewEvents() {
         <a class="card event-card t-${esc(e.type)}" href="#/event/${encodeURIComponent(e.id)}/signup">
           <div class="ev-icon">${EVENT_TYPES[e.type]?.icon || "📅"}</div>
           <div><div class="ev-type">${t("t_" + e.type)}</div><h3>${esc(e.title)}</h3>
-          <div class="muted">${esc(e.date || "")} ${esc(e.time || "")}${e.enemy ? " · vs " + esc(e.enemy) : ""}</div></div>
+          <div class="muted">${esc(e.date || "")} ${esc(e.time || "")}${e.enemy ? " · vs " + esc(e.enemy) : ""}</div>${factionChip(e)}</div>
         </a>`).join("") : `<p class="muted">${t("noEvents")}</p>`}
     </div>`;
 }
@@ -143,12 +144,25 @@ function viewEvent(r) {
       <div class="ev-icon big">${EVENT_TYPES[ev.type]?.icon || "📅"}</div>
       <div><div class="ev-type">${t("t_" + ev.type)}</div><h1>${esc(ev.title)}</h1>
       <div class="muted">${esc(ev.date || "")} ${esc(ev.time || "")}${ev.enemy ? " · vs " + esc(ev.enemy) : ""}</div>
+      ${factionChip(ev) ? `<div class="hero-chips">${factionChip(ev)}</div>` : ""}
       ${ev.notes ? `<p class="notes">${esc(ev.notes)}</p>` : ""}</div>
     </div>
     <div class="tabs">${tabs.map(([k, l]) => `<a href="#/event/${encodeURIComponent(ev.id)}/${k}" class="${k === tab ? "on" : ""}">${l}</a>`).join("")}</div>
     ${body}`;
 }
 
+const factionChip = (ev) => {
+  if (ev.type !== "canyon" || !ev.faction) return "";
+  const f = ev.faction === "rule" ? "rule" : "dawn";
+  const extra = f === "dawn" && ev.ally ? ` · ${t("with")} ${esc(ev.ally)}` : "";
+  return `<span class="chip f-${f}" title="${esc(t("f_" + f + "_help"))}">${f === "rule" ? "👑" : "🌅"} ${t("f_" + f)}${extra}</span>`;
+};
+const factionFields = (ev = {}) => `
+  <label>${t("faction")}<select name="faction">
+    <option value="dawn" ${ev.faction !== "rule" ? "selected" : ""}>🌅 ${t("f_dawn")} — ${t("f_dawn_help")}</option>
+    <option value="rule" ${ev.faction === "rule" ? "selected" : ""}>👑 ${t("f_rule")} — ${t("f_rule_help")}</option>
+  </select></label>
+  <label>${t("ally")}<input name="ally" data-keep value="${esc(ev.ally || "")}" placeholder="${t("allyHint")}"></label>`;
 const statusChip = (s) => s ? `<span class="chip s-${s}">${t(s)}</span>` : `<span class="chip s-none">${t("noAnswer")}</span>`;
 function prefLabel(ev, p) {
   if (!p || p === "any") return p === "any" ? t("pref_any") : "";
@@ -251,7 +265,7 @@ function viewMap(ev) {
   return `
     ${filters}
     <p class="hint">${t("mapHelp")}</p>
-    <div class="map t-${esc(ev.type)}" id="map">
+    <div class="map t-${esc(ev.type)} ${S.maps[ev.type]?.img ? "has-bg" : ""}" id="map">
       ${(ev.objectives || []).map((o) => { const ps = onObj(o.id); return `
         <div class="obj ${S.ui.selObj === o.id ? "sel" : ""} ${ps.length ? "has" : ""}" data-obj="${esc(o.id)}" style="left:${o.x}%;top:${o.y}%">
           <div class="obj-name">${esc(L(o))}</div><div class="obj-cnt">${ps.length}</div>
@@ -259,9 +273,43 @@ function viewMap(ev) {
         </div>`; }).join("")}
     </div>
     ${panel}
-    ${isAdmin() ? `<div class="row"><button class="btn sm ghost" data-action="addObj">+ ${t("addObjective")}</button></div>` : ""}
+    ${isAdmin() ? `<div class="row wrap"><button class="btn sm ghost" data-action="addObj">+ ${t("addObjective")}</button>
+      <label class="btn sm ghost filebtn">🖼️ ${t("mapBg")}<input type="file" accept="image/*" data-change="mapImage" data-type="${esc(ev.type)}" hidden></label>
+      ${S.maps[ev.type]?.img ? `<button class="btn sm ghost" data-action="removeMapImage" data-type="${esc(ev.type)}">${t("mapBgRemove")}</button>` : ""}</div>
+      <p class="hint">${t("mapBgHelp")}</p>` : ""}
     <div class="card"><h3>${t("unassigned")} <small class="muted">(${free.length})</small></h3>
       <div class="tags">${free.map((m) => `<span class="tag">${esc(m.name)} <small>${fmtP(m.power)}</small></span>`).join("")}</div></div>`;
+}
+
+function applyMapBg(evId) {
+  const ev = currentEvent(evId), map = document.getElementById("map");
+  const bg = ev && S.maps[ev.type];
+  if (!map || !bg?.img || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(bg.img)) return;
+  map.style.backgroundImage = `url("${bg.img}")`;
+  if (bg.w && bg.h) map.style.aspectRatio = `${bg.w} / ${bg.h}`;
+}
+
+// Achica la imagen en el navegador para que quepa en un documento de Firestore (<1 MB).
+function shrinkImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let max = 1400, q = 0.8, out = "", w = 0, h = 0;
+      for (let i = 0; i < 8; i++) {
+        const k = Math.min(1, max / Math.max(img.width, img.height));
+        w = Math.round(img.width * k); h = Math.round(img.height * k);
+        const c = document.createElement("canvas"); c.width = w; c.height = h;
+        c.getContext("2d").drawImage(img, 0, 0, w, h);
+        out = c.toDataURL("image/jpeg", q);
+        if (out.length < 850000) break;
+        max = Math.round(max * 0.85); q = Math.max(0.5, q - 0.08);
+      }
+      URL.revokeObjectURL(img.src);
+      out.length < 1000000 ? resolve({ img: out, w, h }) : reject(new Error("imagen muy grande"));
+    };
+    img.onerror = () => reject(new Error("no es una imagen"));
+    img.src = URL.createObjectURL(file);
+  });
 }
 
 function attachMapDrag(evId) {
@@ -346,6 +394,7 @@ function viewSettings(ev) {
         <label>${t("time")}<input type="time" name="time" data-keep value="${esc(ev.time || "")}"></label>
         <label>${t("enemy")}<input name="enemy" data-keep value="${esc(ev.enemy || "")}"></label>
       </div>
+      ${ev.type === "canyon" ? `<div class="grid2">${factionFields(ev)}</div>` : ""}
       <label>${t("notes")}<textarea name="notes" data-keep rows="3">${esc(ev.notes || "")}</textarea></label>
       ${(ev.teams || []).length || ev.type !== "svs" ? `<h3>${t("teams")} · ${t("limits")}</h3>
       <div class="teams-edit">${(ev.teams || []).map((tm, i) => `
@@ -416,6 +465,10 @@ const actions = {
   mapTeam(el) { S.ui.mapTeam = el.dataset.k; render(true); },
   selObj(el) { S.ui.selObj = el.dataset.id || null; render(true); },
   setObj(el) { safe(() => db.set(evPath(), el.dataset.id, { objective: el.dataset.obj })); },
+  removeMapImage(el) {
+    if (!confirm(t("confirmDelete"))) return;
+    safe(() => db.del("maps", el.dataset.type));
+  },
   addObj() {
     const name = prompt(t("objName")); if (!name) return;
     const ev = currentEvent(route().id);
@@ -471,7 +524,8 @@ const actions = {
 
 const changes = {
   newType(el) {
-    const f = el.form; if (f.title.value === "" || Object.keys(EVENT_TYPES).some((k) => f.title.value === t("t_" + k))) f.title.value = t("t_" + el.value);
+    const f = el.form;
+    f.querySelector(".canyon-only").hidden = el.value !== "canyon"; if (f.title.value === "" || Object.keys(EVENT_TYPES).some((k) => f.title.value === t("t_" + k))) f.title.value = t("t_" + el.value);
   },
   pickMe(el) {
     const m = S.members.find((x) => x.name.toLowerCase() === el.value.trim().toLowerCase());
@@ -480,6 +534,14 @@ const changes = {
     f.querySelectorAll('input[name="status"]').forEach((r) => (r.checked = r.value === p.status));
     if (p.pref) f.pref.value = p.pref;
     f.note.value = p.note || "";
+  },
+  mapImage(el) {
+    const file = el.files?.[0]; if (!file) return;
+    safe(async () => {
+      const data = await shrinkImage(file);
+      await db.set("maps", el.dataset.type, { ...data, updatedAt: Date.now() }, false);
+      toast(t("saved"));
+    });
   },
   showAllPool(el) { S.ui.showAllPool = el.checked; render(true); },
   addToObj(el) { if (el.value) safe(() => db.set(evPath(), el.value, { objective: el.dataset.obj })); },
@@ -495,6 +557,7 @@ const submits = {
     const id = await db.add("events", {
       type, title: f.title.value.trim(), date: f.date.value, time: f.time.value, enemy: f.enemy.value.trim(), notes: "",
       teams: structuredClone(tpl.teams), objectives: structuredClone(tpl.objectives), createdAt: Date.now(),
+      ...(type === "canyon" ? { faction: f.faction.value, ally: f.ally.value.trim() } : {}),
     });
     S.ui.showNewEvent = false;
     location.hash = `#/event/${encodeURIComponent(id)}/signup`;
@@ -513,7 +576,8 @@ const submits = {
       ...tm, [getLang()]: f["tname" + i]?.value || L(tm), time: f["ttime" + i]?.value || "",
       starters: +f["tst" + i]?.value || 0, subs: +f["tsb" + i]?.value || 0,
     }));
-    await db.set("events", ev.id, { title: f.title.value.trim(), date: f.date.value, time: f.time.value, enemy: f.enemy.value.trim(), notes: f.notes.value.trim(), teams });
+    await db.set("events", ev.id, { title: f.title.value.trim(), date: f.date.value, time: f.time.value, enemy: f.enemy.value.trim(), notes: f.notes.value.trim(), teams,
+      ...(ev.type === "canyon" ? { faction: f.faction.value, ally: f.ally.value.trim() } : {}) });
     toast(t("saved"));
   },
   async addMember(f) {
@@ -610,5 +674,6 @@ async function loadAdmins() {
     render();
   });
   db.subscribe("events", (docs) => { S.events = docs; render(); });
+  db.subscribe("maps", (docs) => { S.maps = Object.fromEntries(docs.map((d) => [d.id, d])); render(); });
   ensurePlayers();
 })();
