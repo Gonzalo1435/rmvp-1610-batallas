@@ -170,3 +170,17 @@ ol.plist li::before { counter-increment: n; content: counter(n); color: var(--mu
   .obj-name { font-size: .58rem; }
   .obj-ppl { display: none; }
 }
+
+/* strategy */
+ul.guide { margin: 6px 0 4px; padding-left: 20px; }
+ul.guide li { margin: 6px 0; line-height: 1.45; }
+ul.guide.check { list-style: none; padding-left: 4px; }
+ul.guide.check li::before { content: "☐ "; color: var(--gold); }
+td.stars { white-space: nowrap; font-size: .8rem; }
+.team-note h4 { color: var(--gold2); margin-top: 0; }
+.team-note p { margin: 4px 0; font-size: .9rem; }
+.subs-card { border-color: #6b2a2a; }
+.copybox { display: flex; gap: 8px; align-items: center; background: #0d1117; border: 1px solid var(--line); border-radius: 9px; padding: 8px; margin: 6px 0; }
+.copybox code { flex: 1; font-size: .82rem; white-space: pre-wrap; color: var(--text); }
+details.card summary { cursor: pointer; }
+.span4 { grid-column: 1 / -1; }

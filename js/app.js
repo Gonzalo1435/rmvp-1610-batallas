@@ -3,6 +3,7 @@ import { ALLIANCE } from "./config.js";
 import { store, db, initStore, onAuthChange, signInGoogle, signOutUser, claimFirstAdmin, saveAdmins } from "./store.js";
 import { EVENT_TYPES, suggestRole } from "./eventTypes.js";
 import { SEED_MEMBERS } from "./seed.js";
+import { CANYON_STRATEGY } from "./strategy.js";
 
 /* ---------------- state & helpers ---------------- */
 const S = {
@@ -135,9 +136,10 @@ function viewEvent(r) {
   if ((ev.teams || []).length) tabs.push(["teams", t("teams")]);
   tabs.push(["map", t("map")]);
   if (ev.type === "svs") tabs.push(["roles", t("roles")]);
+  if (ev.type === "canyon") tabs.push(["strategy", t("strategy")]);
   if (isAdmin()) tabs.push(["settings", t("settings")]);
   const tab = tabs.some(([k]) => k === r.tab) ? r.tab : "signup";
-  const body = { signup: viewSignup, teams: viewTeams, map: viewMap, roles: viewRoles, settings: viewSettings }[tab](ev);
+  const body = { signup: viewSignup, teams: viewTeams, map: viewMap, roles: viewRoles, strategy: viewStrategy, settings: viewSettings }[tab](ev);
   return `
     <div class="pagehead"><a class="back" href="#/events">← ${t("events")}</a></div>
     <div class="event-hero t-${esc(ev.type)}">
@@ -154,7 +156,8 @@ function viewEvent(r) {
 const factionChip = (ev) => {
   if (ev.type !== "canyon" || !ev.faction) return "";
   const f = ev.faction === "rule" ? "rule" : "dawn";
-  const extra = f === "dawn" && ev.ally ? ` · ${t("with")} ${esc(ev.ally)}` : "";
+  const allies = ev.ally || (ev.teams || []).filter((tm) => tm.ally).map((tm) => `${tm.ally} (${tm.id})`).join(" · ");
+  const extra = f === "dawn" && allies ? ` · ${t("with")} ${esc(allies)}` : "";
   return `<span class="chip f-${f}" title="${esc(t("f_" + f + "_help"))}">${f === "rule" ? "👑" : "🌅"} ${t("f_" + f)}${extra}</span>`;
 };
 const factionFields = (ev = {}) => `
@@ -283,10 +286,16 @@ function viewMap(ev) {
 
 function applyMapBg(evId) {
   const ev = currentEvent(evId), map = document.getElementById("map");
-  const bg = ev && S.maps[ev.type];
-  if (!map || !bg?.img || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(bg.img)) return;
-  map.style.backgroundImage = `url("${bg.img}")`;
-  if (bg.w && bg.h) map.style.aspectRatio = `${bg.w} / ${bg.h}`;
+  if (!map || !ev) return;
+  const up = S.maps[ev.type];
+  const def = EVENT_TYPES[ev.type]?.map;
+  let src = null, w, h;
+  if (up?.img && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(up.img)) ({ img: src, w, h } = up);
+  else if (def) ({ src, w, h } = def);
+  if (!src) return;
+  map.classList.add("has-bg");
+  map.style.backgroundImage = `url("${src}")`;
+  if (w && h) map.style.aspectRatio = `${w} / ${h}`;
 }
 
 // Achica la imagen en el navegador para que quepa en un documento de Firestore (<1 MB).
@@ -383,6 +392,37 @@ function viewRoles(ev) {
       </tr>`; }).join("")}</tbody></table></div>`;
 }
 
+/* --- strategy (Canyon) --- */
+const md = (txt) => esc(txt).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+function viewStrategy(ev) {
+  const C = CANYON_STRATEGY[getLang()] || CANYON_STRATEGY.es;
+  const ours = ev.faction === "rule" ? "rule" : "dawn", other = ours === "rule" ? "dawn" : "rule";
+  const list = (arr) => `<ul class="guide">${arr.map((x) => `<li>${md(x)}</li>`).join("")}</ul>`;
+  const teamNotes = (ev.teams || []).map((tm) => {
+    const st = S.members.filter((m) => pl(m.id).team === tm.id && pl(m.id).seat === "starter");
+    const nSubs = S.members.filter((m) => pl(m.id).team === tm.id && pl(m.id).seat === "sub").length;
+    const pw = st.reduce((a, m) => a + (m.power || 0), 0);
+    const note = (nSubs >= 5 ? C.teamManySubs : C.teamFewSubs).replace("{n}", nSubs);
+    return `<div class="card team-note"><h4>${esc(L(tm))}${tm.time ? ` · ${esc(tm.time)}` : ""}${tm.ally ? ` · ${t("with")} ${esc(tm.ally)}` : ""}</h4>
+      <p>${md(note)}</p><p class="muted">${C.teamPower.replace("{p}", fmtP(pw))} · ${st.length} ${t("starters").toLowerCase()}</p></div>`;
+  }).join("");
+  const copyBox = (txt) => `<div class="copybox"><code>${esc(txt)}</code><button class="btn sm ghost" data-action="copyText" data-text="${esc(txt)}">${C.copy}</button></div>`;
+  return `
+    <p class="hint">ℹ️ ${esc(C.disclaimer)}</p>
+    <div class="card"><h3>${esc(C.factions[ours].title)}</h3>${list(C.factions[ours].items)}</div>
+    <div class="teams">${teamNotes}</div>
+    <div class="card"><h3>${esc(C.pointsTitle)}</h3><div class="list"><table><tbody>
+      ${C.points.map(([st, n, p, d]) => `<tr><td class="stars">${st}</td><td><b>${esc(n)}</b><br><small class="muted">${esc(d)}</small></td><td class="num"><b>${esc(p)}</b></td></tr>`).join("")}
+    </tbody></table></div></div>
+    <div class="card"><h3>${esc(C.timelineTitle)}</h3><ul class="guide">${C.timeline.map(([w, d]) => `<li><b>${esc(w)}</b> — ${md(d)}</li>`).join("")}</ul></div>
+    <div class="card"><h3>${esc(C.rotateTitle)}</h3>${list(C.rotate)}</div>
+    <div class="card"><h3>${esc(C.teleportTitle)}</h3><ul class="guide check">${C.teleport.map((x) => `<li>${md(x)}</li>`).join("")}</ul></div>
+    <div class="card subs-card"><h3>${esc(C.subsTitle)}</h3>${list(C.subs)}
+      <h4>${esc(C.msgTitle)}</h4>${copyBox(C.msgOut)}${copyBox(C.msgIn)}</div>
+    <details class="card"><summary><b>${esc(C.factions[other].title)}</b></summary>${list(C.factions[other].items)}</details>
+    <div class="card"><h3>${esc(C.basicsTitle)}</h3>${list(C.basics)}</div>`;
+}
+
 /* --- settings --- */
 function viewSettings(ev) {
   if (!isAdmin()) return "";
@@ -403,6 +443,7 @@ function viewSettings(ev) {
           <label>${t("time")}<input type="time" name="ttime${i}" data-keep value="${esc(tm.time || "")}"></label>
           <label>${t("starters")}<input type="number" min="0" max="100" name="tst${i}" data-keep value="${tm.starters}"></label>
           <label>${t("subs")}<input type="number" min="0" max="100" name="tsb${i}" data-keep value="${tm.subs}"></label>
+          ${ev.type === "canyon" ? `<label class="span4">${t("teamAlly")}<input name="tally${i}" data-keep value="${esc(tm.ally || "")}" placeholder="${t("allyHint")}"></label>` : ""}
         </div>`).join("")}</div>
       <button type="button" class="btn sm ghost" data-action="addTeam">+ ${t("addTeam")}</button>` : ""}
       <div class="row"><button class="btn gold">${t("save")}</button></div>
@@ -465,6 +506,9 @@ const actions = {
   mapTeam(el) { S.ui.mapTeam = el.dataset.k; render(true); },
   selObj(el) { S.ui.selObj = el.dataset.id || null; render(true); },
   setObj(el) { safe(() => db.set(evPath(), el.dataset.id, { objective: el.dataset.obj })); },
+  copyText(el) {
+    navigator.clipboard?.writeText(el.dataset.text).then(() => toast("✓"), () => toast(el.dataset.text));
+  },
   removeMapImage(el) {
     if (!confirm(t("confirmDelete"))) return;
     safe(() => db.del("maps", el.dataset.type));
@@ -575,6 +619,7 @@ const submits = {
     const teams = (ev.teams || []).map((tm, i) => ({
       ...tm, [getLang()]: f["tname" + i]?.value || L(tm), time: f["ttime" + i]?.value || "",
       starters: +f["tst" + i]?.value || 0, subs: +f["tsb" + i]?.value || 0,
+      ...(f["tally" + i] ? { ally: f["tally" + i].value.trim() } : {}),
     }));
     await db.set("events", ev.id, { title: f.title.value.trim(), date: f.date.value, time: f.time.value, enemy: f.enemy.value.trim(), notes: f.notes.value.trim(), teams,
       ...(ev.type === "canyon" ? { faction: f.faction.value, ally: f.ally.value.trim() } : {}) });
