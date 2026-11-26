@@ -4,12 +4,13 @@ import { store, db, initStore, onAuthChange, signInGoogle, signOutUser, claimFir
 import { EVENT_TYPES, suggestRole } from "./eventTypes.js";
 import { SEED_MEMBERS } from "./seed.js";
 import { CANYON_STRATEGY } from "./strategy.js";
+import * as IMP from "./importer.js";
 
-const APP_VERSION = "v2026.11.25-4";
+const APP_VERSION = "v2026.11.26-1";
 /* ---------------- state & helpers ---------------- */
 const S = {
   ready: false,
-  members: [], events: [], maps: {}, players: {}, playersEventId: null, unsubPlayers: null,
+  members: [], events: [], maps: {}, snapshots: [], imp: null, players: {}, playersEventId: null, unsubPlayers: null,
   admins: [],
   ui: { mapTeam: "all", selObj: null, rolesContact: "", onlyPending: false, memberSearch: "",
         showNewEvent: false, editMember: null, showAllPool: false },
@@ -527,6 +528,14 @@ function viewSettings(ev) {
 }
 
 /* ---------------- members ---------------- */
+function powerDelta(m) {
+  const snaps = S.snapshots;
+  if (snaps.length < 2) return null;
+  const prev = snaps[snaps.length - 2].powers || {};
+  return prev[m.id] != null ? Math.round((m.power - prev[m.id]) * 10) / 10 : null;
+}
+const fmtDelta = (d) => d == null || d === 0 ? "" : `<span class="delta ${d > 0 ? "up" : d < 0 ? "down" : ""}">${d > 0 ? "+" : ""}${d.toFixed(1)}M</span>`;
+const fmtSeen = (m) => m.lastSeen ? `<small class="muted">${esc(m.lastSeen)}${m.lastSeenAt ? " · " + new Date(m.lastSeenAt).toLocaleDateString(getLang() === "es" ? "es-CL" : "en-US", { day: "2-digit", month: "short" }) : ""}</small>` : "";
 function memberRows() {
   const q = S.ui.memberSearch.trim().toLowerCase();
   const list = S.members.filter((m) => !q || m.name.toLowerCase().includes(q)).sort((a, b) => (a.rank || "").localeCompare(b.rank || "") * -1 || byPower(a, b));
@@ -536,13 +545,14 @@ function memberRows() {
       <td><input data-keep id="em-power" type="number" step="0.1" value="${m.power}"></td>
       <td><input data-keep id="em-level" type="number" value="${m.level}"></td>
       <td><button class="mini" data-action="saveMember" data-id="${esc(m.id)}">${t("save")}</button><button class="mini ghost" data-action="editMember" data-id="">✕</button></td></tr>` : `
-    <tr><td>${esc(m.name)}</td><td><span class="chip rk-${esc(m.rank)}">${esc(m.rank)}</span></td><td class="num">${fmtP(m.power)}</td><td class="num">${esc(m.level)}</td>
+    <tr><td>${esc(m.name)}<br>${fmtSeen(m)}</td><td><span class="chip rk-${esc(m.rank)}">${esc(m.rank)}</span></td><td class="num">${fmtP(m.power)}<br>${fmtDelta(powerDelta(m))}</td><td class="num">${esc(m.level)}</td>
       <td>${isAdmin() ? `<button class="mini ghost" data-action="editMember" data-id="${esc(m.id)}">✎</button><button class="mini danger" data-action="delMember" data-id="${esc(m.id)}">✕</button>` : ""}</td></tr>`).join("");
 }
 function viewMembers() {
   const admin = isAdmin();
   return `
-    <div class="pagehead"><h1>${t("members")} <small class="muted">${S.members.length}</small></h1></div>
+    <div class="pagehead"><h1>${t("members")} <small class="muted">${S.members.length}</small></h1>${S.snapshots.length ? `<small class="muted">${t("lastUpdate")}: ${new Date(S.snapshots[S.snapshots.length - 1].takenAt).toLocaleString(getLang() === "es" ? "es-CL" : "en-US", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</small>` : ""}</div>
+    ${admin ? viewImport() : ""}
     <input class="search" id="mem-search" placeholder="${t("search")}" value="${esc(S.ui.memberSearch)}" autocomplete="off">
     <div class="card list"><table><thead><tr><th>${t("name")}</th><th>${t("rank")}</th><th class="num">${t("power")}</th><th class="num">${t("level")}</th><th></th></tr></thead>
       <tbody id="mem-body">${memberRows()}</tbody></table></div>
@@ -558,6 +568,101 @@ function viewMembers() {
     ${!S.members.length ? `<div class="card"><button class="btn gold" data-action="seed">${t("seed")}</button></div>` : ""}
     ${store.mode === "firebase" ? `<form class="card form" data-submit="saveAdmins"><h3>${t("adminsTitle")}</h3>
       <textarea name="emails" rows="4" data-keep>${esc(S.admins.join("\n"))}</textarea><button class="btn ghost">${t("save")}</button></form>` : ""}` : ""}`;
+}
+
+/* ---------------- import from video ---------------- */
+function viewImport() {
+  const key = IMP.getKey(), model = IMP.getModel();
+  const I = S.imp;
+  const keyBox = key
+    ? `<div class="row wrap"><span class="chip s-yes">🔑 ${t("keySaved")}</span>
+        <label class="inline">${t("model")} <select data-change="impModel">
+          <option value="" ${!model ? "selected" : ""}>${t("modelAuto")}</option>
+          <option value="flash" ${model === "flash" ? "selected" : ""}>${t("modelFlash")}</option></select></label>
+        <button class="btn sm ghost" data-action="impKeyClear">${t("keyRemove")}</button></div>`
+    : `<form class="form" data-submit="impKey"><p class="hint">${t("keyHelp")} <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a></p>
+        <div class="row"><input name="key" data-keep placeholder="AIza…" autocomplete="off"><button class="btn gold">${t("save")}</button></div></form>`;
+  let body = "";
+  if (I?.busy) body = `<p class="impstatus">⏳ ${esc(I.status)}</p><div class="bar"><div style="width:${Math.round((I.pct || 0) * 100)}%"></div></div>`;
+  else if (I?.error) body = `<p class="banner bad">⚠️ ${esc(I.error)}</p>`;
+  if (I?.diff && !I.busy) {
+    const it = I.diff.items;
+    const c = { new: 0, update: 0, same: 0 };
+    it.forEach((x) => c[x.kind]++);
+    const chip = (x) => x.kind === "new" ? `<span class="chip s-maybe">${t("impNew")}</span>` : x.kind === "update" ? `<span class="chip s-yes">${t("impUpdate")}</span>` : `<span class="chip s-none">${t("impSame")}</span>`;
+    body += `<p class="hint">${t("impRead").replace("{n}", it.length).replace("{f}", I.frames)} · ${esc(I.model || "")}</p>
+      <div class="chips-row"><span class="chip s-maybe">${t("impNew")}: ${c.new}</span><span class="chip s-yes">${t("impUpdate")}: ${c.update}</span><span class="chip s-none">${t("impSame")}: ${c.same}</span><span class="chip s-no">${t("impMissing")}: ${I.diff.missing.length}</span></div>
+      <div class="list"><table><thead><tr><th>✓</th><th>${t("impReadName")}</th><th>${t("impWebName")}</th><th class="num">${t("power")}</th><th class="num">${t("level")}</th><th>${t("lastSeen")}</th></tr></thead><tbody>
+      ${it.map((x, i) => `<tr class="${x.kind}"><td><input type="checkbox" data-change="impToggle" data-i="${i}" ${x.apply ? "checked" : ""}></td>
+        <td>${esc(x.row.name)} ${chip(x)}${x.row.rank ? ` <small class="muted">${esc(x.row.rank)}</small>` : ""}</td>
+        <td>${x.member ? esc(x.member.name) + (x.fuzzy ? ` <span class="chip s-maybe" title="${t("impFuzzyHelp")}">≈</span>` : "") : "—"}</td>
+        <td class="num">${x.member ? `<small class="muted">${fmtP(x.member.power)} →</small> ` : ""}${x.row.power != null ? fmtP(x.row.power) : "?"}${x.member && x.row.power != null ? "<br>" + fmtDelta(Math.round((x.row.power - (x.member.power || 0)) * 10) / 10) : ""}</td>
+        <td class="num">${esc(x.row.level ?? "")}</td><td><small>${esc(x.row.lastSeen || "")}</small></td></tr>`).join("")}
+      </tbody></table></div>
+      ${I.diff.missing.length ? `<details class="missing"><summary>${t("impMissing")} (${I.diff.missing.length}) — ${t("impMissingHelp")}</summary>
+        <div class="tags">${I.diff.missing.map((m) => `<label class="tag"><input type="checkbox" data-change="impDel" data-id="${esc(m.id)}" ${I.del?.[m.id] ? "checked" : ""}> ${esc(m.name)} <small>${fmtP(m.power)}</small></label>`).join("")}</div>
+        <p class="hint">${t("impDelHelp")}</p></details>` : ""}
+      <div class="row"><button class="btn gold" data-action="impApply">${t("impApply")}</button><button class="btn ghost" data-action="impCancel">${t("cancel")}</button></div>`;
+  }
+  return `<div class="card imp"><h3>📹 ${t("impTitle")}</h3>
+    <p class="hint">${t("impHelp")}</p>
+    ${keyBox}
+    ${key || window.__mockGemini ? `<label class="btn filebtn ${I?.busy ? "disabled" : ""}">📤 ${t("impPick")}<input type="file" accept="video/*,image/*" multiple data-change="impFile" hidden ${I?.busy ? "disabled" : ""}></label>` : ""}
+    ${body}
+  </div>`;
+}
+
+async function runImport(files) {
+  S.imp = { busy: true, status: t("impFrames"), pct: 0 };
+  render(true);
+  try {
+    let frames = [];
+    for (const f of files) {
+      if (f.type.startsWith("video/")) frames.push(...await IMP.framesFromVideo(f, (p, n) => { S.imp.pct = p * 0.3; S.imp.status = `${t("impFrames")} (${n})`; render(true); }));
+    }
+    const imgs = files.filter((f) => f.type.startsWith("image/"));
+    if (imgs.length) frames.push(...await IMP.framesFromImages(imgs));
+    if (!frames.length) throw new Error(t("impNoFrames"));
+    S.imp.status = `${t("impReading")} (${frames.length})`; render(true);
+    const { rows, model } = await IMP.extractRows(frames, (p, n, mdl) => { S.imp.pct = 0.3 + p * 0.7; S.imp.status = `${t("impReading")} · ${n} ${t("players")} · ${mdl || ""}`; render(true); });
+    if (!rows.length) throw new Error(t("impNoRows"));
+    S.imp = { diff: IMP.buildDiff(rows, S.members), frames: frames.length, model, del: {} };
+  } catch (e) {
+    console.error(e);
+    S.imp = { error: e.message || String(e) };
+  }
+  render(true);
+}
+
+async function applyImport() {
+  const I = S.imp; if (!I?.diff) return;
+  const now = Date.now(), items = [], powers = {};
+  for (const x of I.diff.items) {
+    const r = x.row;
+    if (x.member) {
+      const data = { lastSeen: r.lastSeen || x.member.lastSeen || "", lastSeenAt: now };
+      if (x.apply) {
+        if (r.power != null) data.power = r.power;
+        if (r.level) data.level = r.level;
+        if (r.rank && /^R[1-5]$/.test(r.rank)) data.rank = r.rank;
+      }
+      items.push({ id: x.member.id, data });
+      powers[x.member.id] = x.apply && r.power != null ? r.power : x.member.power;
+    } else if (x.apply) {
+      const id = slug(r.name);
+      items.push({ id, data: { name: r.name, rank: /^R[1-5]$/.test(r.rank || "") ? r.rank : "R3", power: r.power || 0, level: r.level || 0, lastSeen: r.lastSeen || "", lastSeenAt: now } });
+      if (r.power != null) powers[id] = r.power;
+    }
+  }
+  await db.setMany("members", items);
+  for (const id of Object.keys(I.del || {}).filter((k) => I.del[k])) await db.del("members", id);
+  // Foto del poder de todos (incluye a quienes no salieron en el video, con su último valor).
+  for (const m of S.members) if (powers[m.id] == null && !I.del?.[m.id]) powers[m.id] = m.power;
+  const d = new Date(now), sid = d.toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  await db.set("snapshots", sid, { takenAt: now, source: "video", model: I.model || "", powers }, false);
+  S.imp = null;
+  render(true);
+  toast(`${t("saved")} (${items.length})`);
 }
 
 /* ---------------- actions ---------------- */
@@ -589,6 +694,9 @@ const actions = {
     });
   },
   setPhase(el) { S.ui.phase = el.dataset.k; render(true); },
+  impKeyClear() { if (confirm(t("confirmDelete"))) { IMP.setKey(""); render(true); } },
+  impCancel() { S.imp = null; render(true); },
+  impApply() { safe(applyImport); },
   copyText(el) {
     navigator.clipboard?.writeText(el.dataset.text).then(() => toast("✓"), () => toast(el.dataset.text));
   },
@@ -663,6 +771,10 @@ const changes = {
     if (p.pref) f.pref.value = p.pref;
     f.note.value = p.note || "";
   },
+  impFile(el) { const files = [...(el.files || [])]; if (files.length) runImport(files); },
+  impModel(el) { IMP.setModel(el.value); render(true); },
+  impToggle(el) { const x = S.imp?.diff?.items[+el.dataset.i]; if (x) x.apply = el.checked; },
+  impDel(el) { if (S.imp) { S.imp.del = S.imp.del || {}; S.imp.del[el.dataset.id] = el.checked; } },
   mapImage(el) {
     const file = el.files?.[0]; if (!file) return;
     safe(async () => {
@@ -722,6 +834,13 @@ const submits = {
       });
     await db.setMany("members", items);
     f.reset(); toast(`${t("saved")} (${items.length})`);
+  },
+  async impKey(f) {
+    const k = f.key.value.trim(); if (!k) return;
+    IMP.setKey(k);
+    try { const m = await IMP.pickModel(k); toast(`🔑 ✓ ${m}`); }
+    catch (e) { IMP.setKey(""); toast(e.message, true); }
+    render(true);
   },
   async saveAdmins(f) { await saveAdmins(f.emails.value.split(/[\s,;]+/)); await loadAdmins(); toast(t("saved")); },
 };
@@ -804,6 +923,7 @@ async function loadAdmins() {
     render();
   });
   db.subscribe("events", (docs) => { S.events = docs; render(); });
+  db.subscribe("snapshots", (docs) => { S.snapshots = docs.sort((a, b) => (a.takenAt || 0) - (b.takenAt || 0)); render(); });
   db.subscribe("maps", (docs) => { S.maps = Object.fromEntries(docs.map((d) => [d.id, d])); render(); });
   ensurePlayers();
 })();

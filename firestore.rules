@@ -31,6 +31,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /snapshots/{snapId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
     match /members/{memberId} {
       allow read: if signedIn();
       allow write: if isAdmin();

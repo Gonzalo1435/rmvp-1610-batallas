@@ -207,3 +207,15 @@ footer.ver { text-align: center; color: var(--muted); font-size: .72rem; padding
 .obj-plus { font-weight: 900; font-size: .9rem; line-height: 1; color: #fff; }
 .map.labeled .obj.has .obj-ppl { color: #fff; font-weight: 700; font-size: .66rem; }
 .map.has-bg { cursor: pointer; }
+
+/* import */
+.imp .row input { flex: 1; }
+.bar { height: 8px; background: var(--panel2); border-radius: 99px; overflow: hidden; margin: 6px 0 10px; }
+.bar > div { height: 100%; background: linear-gradient(90deg, var(--gold), var(--gold2)); transition: width .3s; }
+.impstatus { margin: 8px 0 0; }
+.delta { font-size: .72rem; font-weight: 700; }
+.delta.up { color: var(--green); } .delta.down { color: var(--red); }
+tr.same td { opacity: .6; }
+details.missing { margin: 10px 0; }
+label.tag { display: inline-flex; gap: 5px; align-items: center; color: var(--text); font-weight: 500; }
+.btn.disabled { opacity: .5; pointer-events: none; }
