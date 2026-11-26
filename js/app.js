@@ -5,6 +5,7 @@ import { EVENT_TYPES, suggestRole } from "./eventTypes.js";
 import { SEED_MEMBERS } from "./seed.js";
 import { CANYON_STRATEGY } from "./strategy.js";
 
+const APP_VERSION = "v2026.11.25-3";
 /* ---------------- state & helpers ---------------- */
 const S = {
   ready: false,
@@ -64,12 +65,13 @@ function render(force = false) {
   pending = false;
   const r = route();
   let main = "";
-  if (!S.ready) main = `<div class="loading">…</div>`;
+  if (store.mode === "offline") main = "";
+  else if (!S.ready || store.mode === "connecting") main = `<div class="loading">⏳</div>`;
   else if (r.page === "members") main = viewMembers();
   else if (r.page === "event") main = viewEvent(r);
   else main = viewEvents();
-  app.innerHTML = viewHeader(r) + (store.mode === "demo" ? viewDemoBanner() : "") +
-    (store.error ? `<div class="banner bad">${esc(store.error)}</div>` : "") + `<main>${main}</main>`;
+  app.innerHTML = viewHeader(r) + (store.mode === "demo" ? viewDemoBanner() : "") + viewErrorBanner() +
+    `<main>${main}</main><footer class="ver">${APP_VERSION} · ${store.mode === "firebase" ? "🟢 " + t("live") : store.mode === "demo" ? "🟡 demo" : store.mode === "connecting" ? "⏳ " + t("connecting") : "🔴 " + t("offline")}</footer>`;
   if (r.page === "event" && r.tab === "map") { applyMapBg(r.id); attachMapDrag(r.id); }
 }
 app.addEventListener("focusout", () => setTimeout(() => { if (pending) render(); }, 0));
@@ -78,6 +80,8 @@ function viewHeader(r) {
   const nav = (href, label, on) => `<a href="${href}" class="${on ? "on" : ""}">${label}</a>`;
   let auth = "";
   if (store.mode === "demo") auth = `<span class="badge gold">Demo · ${t("admin")}</span>`;
+  else if (store.mode === "connecting") auth = `<span class="badge">⏳ ${t("connecting")}</span>`;
+  else if (store.mode === "offline") auth = `<span class="badge">🔴 ${t("offline")}</span>`;
   else if (!store.user || store.user.anonymous) auth = `<button class="btn sm" data-action="login">${t("loginR4")}</button>`;
   else {
     auth = `<span class="who">${esc(store.user.name)}</span>
@@ -90,6 +94,14 @@ function viewHeader(r) {
     <nav>${nav("#/events", t("events"), r.page !== "members")}${nav("#/members", t("members"), r.page === "members")}</nav>
     <div class="hdr-right"><button class="btn sm ghost" data-action="lang">${getLang() === "es" ? "EN" : "ES"}</button>${auth}</div>
   </header>`;
+}
+function viewErrorBanner() {
+  if (!store.error) return "";
+  let msg = store.error;
+  if (msg === "NO_FIREBASE") msg = t("errNoFirebase");
+  else if (msg.startsWith("AUTH:")) msg = t("errAuth") + " (" + msg.slice(5) + ")";
+  else if (/permission|insufficient/i.test(msg)) msg = t("errPerm");
+  return `<div class="banner bad">⚠️ ${esc(msg)} <button class="btn sm ghost" data-action="reload">${t("retry")}</button></div>`;
 }
 function viewDemoBanner() {
   return `<div class="banner">${t("demoBanner")} <button class="btn sm ghost" data-action="resetDemo">${t("resetDemo")}</button></div>`;
@@ -532,6 +544,7 @@ function viewMembers() {
 const evPath = () => `events/${route().id}/players`;
 const actions = {
   lang() { setLang(getLang() === "es" ? "en" : "es"); render(true); },
+  reload() { location.reload(); },
   login() { safe(signInGoogle); },
   logout() { safe(signOutUser); },
   claim() { safe(claimFirstAdmin); },
@@ -754,6 +767,7 @@ async function loadAdmins() {
   render(true);
   try { await initStore(); } catch (e) { console.error(e); store.error = e.message; }
   onAuthChange(() => { loadAdmins().then(() => render()); });
+  if (store.mode === "offline") { S.ready = true; render(true); return; }
   let gotMembers = false;
   db.subscribe("members", async (docs) => {
     S.members = docs; S.ready = true;

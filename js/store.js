@@ -5,7 +5,7 @@ const FB_VER = "10.12.2";
 const listeners = new Set(); // auth/admin listeners
 
 export const store = {
-  mode: "demo",
+  mode: firebaseConfig.apiKey ? "connecting" : "demo",
   user: null,       // { uid, email, name, anonymous }
   isAdmin: false,
   adminsExist: false,
@@ -147,12 +147,22 @@ export async function initStore() {
     await refreshAdmin();
     return store;
   }
+  store.mode = "connecting";
   const base = `https://www.gstatic.com/firebasejs/${FB_VER}`;
-  const [appM, m, a] = await Promise.all([
-    import(`${base}/firebase-app.js`),
-    import(`${base}/firebase-firestore.js`),
-    import(`${base}/firebase-auth.js`),
-  ]);
+  let appM, m, a;
+  try {
+    [appM, m, a] = await Promise.all([
+      import(`${base}/firebase-app.js`),
+      import(`${base}/firebase-firestore.js`),
+      import(`${base}/firebase-auth.js`),
+    ]);
+  } catch (e) {
+    // Nunca caer en modo demo si Firebase está configurado: mostrar el motivo.
+    store.mode = "offline";
+    store.error = "NO_FIREBASE";
+    emitAuth();
+    return store;
+  }
   const app = appM.initializeApp(firebaseConfig);
   fb = { db: m.getFirestore(app), auth: a.getAuth(app), m, a };
   impl = fire;
@@ -161,7 +171,7 @@ export async function initStore() {
     let first = true;
     a.onAuthStateChanged(fb.auth, async (u) => {
       if (!u) {
-        try { await a.signInAnonymously(fb.auth); } catch (e) { store.error = e.message; emitAuth(); resolve(); }
+        try { await a.signInAnonymously(fb.auth); } catch (e) { store.error = "AUTH:" + (e.code || e.message); emitAuth(); resolve(); }
         return;
       }
       store.user = { uid: u.uid, email: u.email, name: u.displayName || u.email || "", anonymous: u.isAnonymous };
