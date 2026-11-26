@@ -21,6 +21,7 @@ export const EVENT_TYPES = {
   desert: {
     icon: "🏜️",
     roles: false,
+    phases: true,
     map: { src: "img/map-desert.jpg", w: 1400, h: 989 },
     // 20 titulares + 10 suplentes por fuerza A/B. Editable.
     teams: [
@@ -46,28 +47,28 @@ export const EVENT_TYPES = {
   canyon: {
     icon: "🏞️",
     roles: false,
+    phases: true,
+    map: { src: "img/map-canyon.jpg", w: 864, h: 1055, labeled: true },
     // 1 vs 2 alianzas, hasta 20 jugadores + 10 suplentes por alianza. Cupos editables.
     teams: [
       { id: "A", es: "Equipo A", en: "Team A", time: "", starters: 20, subs: 10 },
       { id: "B", es: "Equipo B", en: "Team B", time: "", starters: 20, subs: 10 },
     ],
-    map: { src: "img/map-canyon.jpg", w: 1168, h: 900 },
-    // Posiciones sobre el mapa de la temporada (captura del juego, nov-2026).
-    // Solo el centro está identificado con seguridad; renombra el resto con el nombre del juego.
+    // Edificios según el plano de planificación de la alianza (Team B, 19-nov-2026).
     objectives: [
-      o("virus", "Laboratorio de Virus (centro)", "Virus Lab (center)", 50, 52),
-      o("north", "Norte – grande (¿Torre de Energía?)", "North – big (Power Tower?)", 50, 32),
-      o("nw-big", "Noroeste – grande", "Northwest – big", 20, 41),
-      o("nw-tower", "Noroeste – torre", "Northwest – tower", 30, 19),
-      o("w-small", "Oeste – pequeño", "West – small", 29, 49),
-      o("sw-big", "Suroeste – grande", "Southwest – big", 18, 70),
-      o("ne-big", "Noreste – grande", "Northeast – big", 81, 40),
-      o("e-small", "Este – pequeño", "East – small", 70, 61),
-      o("se-big", "Sureste – grande", "Southeast – big", 82, 71),
-      o("s-small", "Sur – pequeño", "South – small", 55, 85),
-      o("base-rule", "Base Gobernantes", "Rulebringers base", 50, 10),
-      o("base-us", "Base nuestra (abajo izq.)", "Our base (bottom left)", 14, 94),
-      o("base-ally", "Base aliada (abajo der.)", "Ally base (bottom right)", 86, 94),
+      o("virus", "Laboratorio de Virus", "Virus Lab", 50, 66.8),
+      o("tower", "Torre de Energía", "Power Tower", 59.6, 38.4),
+      o("dc1", "Centro de Datos 1", "Data Center 1", 18.1, 24.8),
+      o("dc2", "Centro de Datos 2", "Data Center 2", 81.6, 24.8),
+      o("serum1", "Fábrica de Suero 1", "Serum Factory 1", 7.5, 42.2),
+      o("serum2", "Fábrica de Suero 2", "Serum Factory 2", 89, 42.5),
+      o("def1", "Sistema de Defensa 1", "Defense System 1", 27.8, 59.2),
+      o("def2", "Sistema de Defensa 2", "Defense System 2", 80, 67.5),
+      o("wh1", "Almacén de Muestras 1", "Sample Warehouse 1", 11, 70.6),
+      o("wh3", "Almacén de Muestras 3", "Sample Warehouse 3", 36.5, 70.6),
+      o("wh4", "Almacén de Muestras 4", "Sample Warehouse 4", 62, 70.6),
+      o("wh2", "Almacén de Muestras 2", "Sample Warehouse 2", 88, 70.6),
+      o("cleaner", "🧹 Limpiar bases", "🧹 Base cleaners", 50, 95),
     ],
   },
 };

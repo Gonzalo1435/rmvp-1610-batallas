@@ -5,6 +5,24 @@
 export const CANYON_STRATEGY = {
   es: {
     disclaimer: "Puntos y tiempos según guías de la comunidad. Pueden cambiar con actualizaciones: confírmalos en «Reglas» dentro del juego.",
+    phasesTitle: "🎯 Plan por fases",
+    phases: {
+      dawn: [
+        "**Inicio (min 0–12):** repartirse en muchos edificios. En cada uno, **1 fuerte o mediano + débiles**: el fuerte captura rápido y los débiles quedan de guarnición.",
+        "Los **más fuertes** van primero a lo que más puntos da y está abierto: la **Torre de Energía** (+50/s).",
+        "Los débiles solos solo en **Almacenes** (+15/s). En los de +20/s queda siempre al menos un mediano.",
+        "**~Min 12 (abre el Laboratorio):** los fuertes se mueven al **Laboratorio de Virus**; débiles y medianos se quedan cuidando lo capturado.",
+        "**2 limpiadores** libres: primero defienden nuestros edificios atacados; si no hay ataques, sacan bases enemigas cercanas.",
+        "Acordar con la alianza aliada qué lado toma cada una para no pisarse.",
+      ],
+      rule: [
+        "Somos menos: **pocos edificios y cercanos** (Torre de Energía, Laboratorio y 1–2 de +20/s). No repartirse en todo.",
+        "**Inicio:** fuertes a la **Torre de Energía** (escudo central); medianos con débiles en 1–2 edificios cercanos a la Torre.",
+        "**~Min 12:** fuertes al **Laboratorio de Virus**; medianos y débiles mantienen la Torre.",
+        "El **Juez** hace de limpiador: usa el Juicio sobre los grupos que atacan el Laboratorio.",
+        "No dejar débiles solos en edificios alejados: los van a sacar.",
+      ],
+    },
     basicsTitle: "Lo básico",
     basics: [
       "Gana quien tenga más puntos al terminar (~30 min). Los puntos salen de **mantener edificios**; matar sirve para desordenar al rival, no para ganar.",
@@ -85,6 +103,24 @@ export const CANYON_STRATEGY = {
   },
   en: {
     disclaimer: "Points and timings come from community guides. They may change with updates: check «Rules» in the game.",
+    phasesTitle: "🎯 Phase plan",
+    phases: {
+      dawn: [
+        "**Start (min 0–12):** spread over many buildings. In each one, **1 strong or medium + weaker players**: the strong one captures fast and the weaker ones garrison.",
+        "The **strongest** go first to the highest-scoring open building: the **Power Tower** (+50/s).",
+        "Weak players alone only on **Warehouses** (+15/s). +20/s buildings always keep at least one medium player.",
+        "**~Min 12 (Lab opens):** the strong move to the **Virus Lab**; weak and medium players keep holding what we captured.",
+        "**2 free cleaners:** first defend our buildings under attack; if none, knock out nearby enemy bases.",
+        "Agree with the allied alliance which side each one takes.",
+      ],
+      rule: [
+        "We are fewer: **few buildings, close together** (Power Tower, Lab and 1–2 +20/s). Don't spread everywhere.",
+        "**Start:** strong players to the **Power Tower** (central shield); medium with weak players on 1–2 buildings near the Tower.",
+        "**~Min 12:** strong to the **Virus Lab**; medium and weak players hold the Tower.",
+        "The **Judicator** is the cleaner: use Judgment on groups attacking the Lab.",
+        "Don't leave weak players alone on far buildings: they'll be knocked out.",
+      ],
+    },
     basicsTitle: "Basics",
     basics: [
       "The side with more points when time runs out (~30 min) wins. Points come from **holding buildings**; kills only disrupt the enemy.",

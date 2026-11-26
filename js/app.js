@@ -251,28 +251,43 @@ function mapCandidates(ev) {
   else list = list.filter((m) => pl(m.id).status !== "no");
   return [...list].sort(byPower);
 }
+const hasPhases = (ev) => !!EVENT_TYPES[ev.type]?.phases;
+const curPhase = (ev) => (hasPhases(ev) && S.ui.phase === "post" ? "post" : "pre");
+const objField = (ev) => (curPhase(ev) === "post" ? "objective2" : "objective");
+// Dónde está cada jugador en una fase: en "Después" se queda donde estaba si no se le asignó otro edificio.
+const spot = (m, ph) => (ph === "post" ? pl(m.id).objective2 || pl(m.id).objective || "" : pl(m.id).objective || "");
+const objName = (ev, id) => L((ev.objectives || []).find((o) => o.id === id)) || "";
+
 function viewMap(ev) {
   const teams = ev.teams || [];
+  const ph = curPhase(ev), field = objField(ev);
   const cands = mapCandidates(ev);
-  const candSet = new Set(cands.map((m) => m.id));
-  const onObj = (oid) => S.members.filter((m) => pl(m.id).objective === oid && candSet.has(m.id)).sort(byPower);
+  const onObj = (oid) => cands.filter((m) => spot(m, ph) === oid);
   const sel = (ev.objectives || []).find((o) => o.id === S.ui.selObj);
-  const free = cands.filter((m) => !pl(m.id).objective);
+  const nowhere = cands.filter((m) => !spot(m, ph));
+  // En "Después" se puede mover a cualquiera que todavía no tenga un segundo edificio.
+  const assignable = ph === "post" ? cands.filter((m) => !pl(m.id).objective2 && spot(m, ph) !== sel?.id) : nowhere;
+  const stays = (m) => ph === "post" && !pl(m.id).objective2 && pl(m.id).objective;
   const filters = teams.length ? `<div class="chips-row">${[["all", t("all")], ...teams.map((tm) => [tm.id, L(tm)])].map(([k, l]) => `<button class="chip ${S.ui.mapTeam === k ? "on" : ""}" data-action="mapTeam" data-k="${esc(k)}">${esc(l)}</button>`).join("")}</div>` : "";
+  const phases = hasPhases(ev) ? `<div class="seg phase">
+      <button class="${ph === "pre" ? "on" : ""}" data-action="setPhase" data-k="pre">${t("phasePre")}</button>
+      <button class="${ph === "post" ? "on" : ""}" data-action="setPhase" data-k="post">${t("phasePost")}</button></div>
+      <p class="hint">${ph === "pre" ? t("phasePreHelp") : t("phasePostHelp")}</p>` : "";
   const panel = sel ? `<div class="card objpanel">
-      <div class="row between"><h3>${esc(L(sel))}</h3><button class="x" data-action="selObj" data-id="">✕</button></div>
-      <ul class="plist">${onObj(sel.id).map((m) => `<li><span class="nm">${esc(m.name)}</span><span class="muted">${fmtP(m.power)}</span>${teams.length ? `<span class="chip">${esc(pl(m.id).team)}</span>` : ""}${isAdmin() ? `<button class="x" data-action="setObj" data-id="${esc(m.id)}" data-obj="">✕</button>` : ""}</li>`).join("") || `<li class="muted">—</li>`}</ul>
-      ${isAdmin() ? `<label>${t("assignTo")} ${esc(L(sel))}<select data-change="addToObj" data-obj="${esc(sel.id)}"><option value="">${free.length ? `+ … (${free.length})` : t("allAssigned")}</option>${free.map((m) => `<option value="${esc(m.id)}">${esc(m.name)} · ${fmtP(m.power)}${teams.length ? ` · ${esc(pl(m.id).team)}` : ""}</option>`).join("")}</select></label>
+      <div class="row between"><h3>${esc(L(sel))}${hasPhases(ev) ? ` <small class="muted">· ${ph === "pre" ? t("phasePre") : t("phasePost")}</small>` : ""}</h3><button class="x" data-action="selObj" data-id="">✕</button></div>
+      <ul class="plist">${onObj(sel.id).map((m) => `<li><span class="nm">${esc(m.name)}</span><span class="muted">${fmtP(m.power)}</span>${teams.length ? `<span class="chip">${esc(pl(m.id).team)}</span>` : ""}${stays(m) ? `<span class="chip stay">${t("stays")}</span>` : ""}${isAdmin() && !stays(m) ? `<button class="x" data-action="setObj" data-id="${esc(m.id)}" data-obj="" data-field="${field}">✕</button>` : ""}</li>`).join("") || `<li class="muted">—</li>`}</ul>
+      ${isAdmin() ? `<label>${t("assignTo")} ${esc(L(sel))}<select data-change="addToObj" data-obj="${esc(sel.id)}" data-field="${field}"><option value="">${assignable.length ? `+ … (${assignable.length})` : t("allAssigned")}</option>${assignable.map((m) => `<option value="${esc(m.id)}">${esc(m.name)} · ${fmtP(m.power)}${teams.length ? ` · ${esc(pl(m.id).team)}` : ""}${ph === "post" && spot(m, ph) ? ` · ${t("from")} ${esc(objName(ev, spot(m, ph)))}` : ""}</option>`).join("")}</select></label>
       <div class="row"><button class="btn sm ghost" data-action="renameObj" data-id="${esc(sel.id)}">${t("edit")}</button><button class="btn sm danger" data-action="delObj" data-id="${esc(sel.id)}">${t("delete")}</button></div>` : ""}
     </div>` : "";
+  const tagList = ph === "post" ? assignable : nowhere;
   return `
-    ${filters}
+    ${filters}${phases}
     <p class="hint">${t("mapHelp")}</p>
     <div class="map t-${esc(ev.type)} ${S.maps[ev.type]?.img ? "has-bg" : ""}" id="map">
       ${(ev.objectives || []).map((o) => { const ps = onObj(o.id); return `
         <div class="obj ${S.ui.selObj === o.id ? "sel" : ""} ${ps.length ? "has" : ""}" data-obj="${esc(o.id)}" style="left:${o.x}%;top:${o.y}%">
           <div class="obj-name">${esc(L(o))}</div><div class="obj-cnt">${ps.length}</div>
-          ${ps.length ? `<div class="obj-ppl">${ps.slice(0, 3).map((m) => esc(m.name)).join("<br>")}${ps.length > 3 ? "<br>+" + (ps.length - 3) : ""}</div>` : ""}
+          ${ps.length ? `<div class="obj-ppl">${ps.slice(0, 4).map((m) => esc(m.name)).join("<br>")}${ps.length > 4 ? "<br>+" + (ps.length - 4) : ""}</div>` : ""}
         </div>`; }).join("")}
     </div>
     ${panel}
@@ -280,11 +295,34 @@ function viewMap(ev) {
       <label class="btn sm ghost filebtn">🖼️ ${t("mapBg")}<input type="file" accept="image/*" data-change="mapImage" data-type="${esc(ev.type)}" hidden></label>
       ${S.maps[ev.type]?.img ? `<button class="btn sm ghost" data-action="removeMapImage" data-type="${esc(ev.type)}">${t("mapBgRemove")}</button>` : ""}</div>
       <p class="hint">${t("mapBgHelp")}</p>` : ""}
-    <div class="card"><h3>${t("unassigned")} <small class="muted">(${free.length})</small></h3>
+    <div class="card"><h3>${ph === "post" ? t("canMove") : t("unassigned")} <small class="muted">(${tagList.length})</small></h3>
       ${isAdmin() && sel ? `<p class="hint">👆 ${t("tapToAssign")} <b>${esc(L(sel))}</b></p>` : ""}
-      <div class="tags">${free.map((m) => isAdmin() && sel
-        ? `<button class="tag tap" data-action="setObj" data-id="${esc(m.id)}" data-obj="${esc(sel.id)}">${esc(m.name)} <small>${fmtP(m.power)}</small></button>`
-        : `<span class="tag">${esc(m.name)} <small>${fmtP(m.power)}</small></span>`).join("")}</div></div>`;
+      <div class="tags">${tagList.map((m) => { const sub = ph === "post" && spot(m, ph) ? ` <small>· ${esc(objName(ev, spot(m, ph)))}</small>` : ""; return isAdmin() && sel
+        ? `<button class="tag tap" data-action="setObj" data-id="${esc(m.id)}" data-obj="${esc(sel.id)}" data-field="${field}">${esc(m.name)} <small>${fmtP(m.power)}</small>${sub}</button>`
+        : `<span class="tag">${esc(m.name)} <small>${fmtP(m.power)}</small>${sub}</span>`; }).join("")}</div></div>`;
+}
+
+// Plan por edificio (Antes / Después) para la pestaña Estrategia.
+function viewPlan(ev) {
+  const teams = ev.teams || [];
+  const cands = mapCandidates(ev);
+  const names = (arr, cls = "") => arr.length ? arr.map((m) => `<span class="pname ${cls}">${esc(m.name)}${pl(m.id).seat === "sub" ? " (S)" : ""}</span>`).join(" ") : `<span class="muted">—</span>`;
+  const rows = (ev.objectives || []).map((o) => {
+    const pre = cands.filter((m) => pl(m.id).objective === o.id);
+    const moved = cands.filter((m) => pl(m.id).objective2 === o.id);
+    const stay = cands.filter((m) => !pl(m.id).objective2 && pl(m.id).objective === o.id);
+    if (!pre.length && !moved.length) return "";
+    return `<tr><td><b>${esc(L(o))}</b></td><td class="pre">${names(pre)}</td><td class="post">${names(moved)}${stay.length ? ` ${names(stay, "stay")}` : ""}</td></tr>`;
+  }).join("");
+  const noSpot = cands.filter((m) => pl(m.id).seat !== "sub" && !pl(m.id).objective && !pl(m.id).objective2);
+  const subs = cands.filter((m) => pl(m.id).seat === "sub");
+  const chips = teams.length ? `<div class="chips-row">${[["all", t("all")], ...teams.map((tm) => [tm.id, L(tm)])].map(([k, l]) => `<button class="chip ${S.ui.mapTeam === k ? "on" : ""}" data-action="mapTeam" data-k="${esc(k)}">${esc(l)}</button>`).join("")}</div>` : "";
+  return `<div class="card plan"><h3>${t("planTitle")}</h3>${chips}
+    ${rows ? `<div class="list"><table><thead><tr><th>${t("building")}</th><th class="pre">${t("phasePre")}</th><th class="post">${t("phasePost")}</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="hint"><span class="pname stay">${t("stays")}</span> = ${t("staysHelp")}</p>` : `<p class="muted">${t("planEmpty")}</p>`}
+    ${noSpot.length ? `<p><b>${t("noSpot")}:</b> ${names(noSpot)}</p>` : ""}
+    ${subs.length ? `<p><b>${t("subs")}:</b> ${names(subs)}</p>` : ""}
+  </div>`;
 }
 
 function applyMapBg(evId) {
@@ -411,8 +449,10 @@ function viewStrategy(ev) {
   }).join("");
   const copyBox = (txt) => `<div class="copybox"><code>${esc(txt)}</code><button class="btn sm ghost" data-action="copyText" data-text="${esc(txt)}">${C.copy}</button></div>`;
   return `
-    <p class="hint">ℹ️ ${esc(C.disclaimer)}</p>
+    ${viewPlan(ev)}
+    <div class="card"><h3>${esc(C.phasesTitle)}</h3>${list(C.phases[ours])}</div>
     <div class="card"><h3>${esc(C.factions[ours].title)}</h3>${list(C.factions[ours].items)}</div>
+    <p class="hint">ℹ️ ${esc(C.disclaimer)}</p>
     <div class="teams">${teamNotes}</div>
     <div class="card"><h3>${esc(C.pointsTitle)}</h3><div class="list"><table><tbody>
       ${C.points.map(([st, n, p, d]) => `<tr><td class="stars">${st}</td><td><b>${esc(n)}</b><br><small class="muted">${esc(d)}</small></td><td class="num"><b>${esc(p)}</b></td></tr>`).join("")}
@@ -499,16 +539,17 @@ const actions = {
   toggleNewEvent() { S.ui.showNewEvent = !S.ui.showNewEvent; render(true); },
   seed() { safe(seedAll); },
   assign(el) { safe(() => db.set(evPath(), el.dataset.id, { team: el.dataset.team, seat: el.dataset.seat })); },
-  unassign(el) { safe(() => db.set(evPath(), el.dataset.id, { team: "", seat: "", objective: "" })); },
+  unassign(el) { safe(() => db.set(evPath(), el.dataset.id, { team: "", seat: "", objective: "", objective2: "" })); },
   autoFill() { safe(autoFill); },
   clearTeams() {
     if (!confirm(t("confirmDelete"))) return;
-    const items = S.members.filter((m) => pl(m.id).team).map((m) => ({ id: m.id, data: { team: "", seat: "", objective: "" } }));
+    const items = S.members.filter((m) => pl(m.id).team).map((m) => ({ id: m.id, data: { team: "", seat: "", objective: "", objective2: "" } }));
     safe(() => db.setMany(evPath(), items));
   },
   mapTeam(el) { S.ui.mapTeam = el.dataset.k; render(true); },
   selObj(el) { S.ui.selObj = el.dataset.id || null; render(true); },
-  setObj(el) { safe(() => db.set(evPath(), el.dataset.id, { objective: el.dataset.obj })); },
+  setObj(el) { safe(() => db.set(evPath(), el.dataset.id, { [el.dataset.field || "objective"]: el.dataset.obj })); },
+  setPhase(el) { S.ui.phase = el.dataset.k; render(true); },
   copyText(el) {
     navigator.clipboard?.writeText(el.dataset.text).then(() => toast("✓"), () => toast(el.dataset.text));
   },
@@ -537,7 +578,8 @@ const actions = {
     S.ui.selObj = null;
     safe(async () => {
       await db.set("events", ev.id, { objectives: ev.objectives.filter((x) => x.id !== id) });
-      const items = S.members.filter((m) => pl(m.id).objective === id).map((m) => ({ id: m.id, data: { objective: "" } }));
+      const items = S.members.filter((m) => pl(m.id).objective === id || pl(m.id).objective2 === id)
+        .map((m) => ({ id: m.id, data: { ...(pl(m.id).objective === id ? { objective: "" } : {}), ...(pl(m.id).objective2 === id ? { objective2: "" } : {}) } }));
       if (items.length) await db.setMany(evPath(), items);
     });
   },
@@ -591,7 +633,7 @@ const changes = {
     });
   },
   showAllPool(el) { S.ui.showAllPool = el.checked; render(true); },
-  addToObj(el) { if (el.value) safe(() => db.set(evPath(), el.value, { objective: el.dataset.obj })); },
+  addToObj(el) { if (el.value) safe(() => db.set(evPath(), el.value, { [el.dataset.field || "objective"]: el.dataset.obj })); },
   rolesContact(el) { S.ui.rolesContact = el.value; render(true); },
   onlyPending(el) { S.ui.onlyPending = el.checked; render(true); },
   setField(el) { safe(() => db.set(evPath(), el.dataset.id, { [el.dataset.field]: el.value })); },
