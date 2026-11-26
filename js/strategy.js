@@ -25,6 +25,7 @@ export const CANYON_STRATEGY = {
     },
     basicsTitle: "Lo básico",
     basics: [
+      "**Cupos:** cada alianza entra con **máximo 20 titulares por partida** (+ hasta 10 suplentes), sea Madrugadores o Gobernantes. Por eso los Gobernantes juegan **20 contra 40** (20 + 20 de las dos alianzas Madrugadoras).",
       "Gana quien tenga más puntos al terminar (~30 min). Los puntos salen de **mantener edificios**; matar sirve para desordenar al rival, no para ganar.",
       "Cada base tiene **6.000 de durabilidad**. Si llega a 0, vuelve a su punto de inicio y pierdes tiempo.",
       "Las habilidades gastan **energía**: se gana capturando, guarneciendo, curando, matando, recogiendo cajas de puntos y tomando Centrales Eléctricas.",
@@ -64,7 +65,7 @@ export const CANYON_STRATEGY = {
     ],
     factions: {
       dawn: {
-        title: "🌅 Si somos Madrugadores (2 alianzas vs 1)",
+        title: "🌅 Si somos Madrugadores (2 alianzas: 20 + 20 contra 20)",
         items: [
           "**Antes de la batalla**, acordar con la alianza aliada quién toma qué (ej.: nosotros lado izquierdo + Laboratorio, ellos lado derecho) y por dónde se comunican.",
           "En la fase 1, **presionar muchos edificios a la vez**: somos más. Los Almacenes casi siempre quedan libres.",
@@ -74,7 +75,7 @@ export const CANYON_STRATEGY = {
         ],
       },
       rule: {
-        title: "👑 Si somos Gobernantes (1 alianza vs 2)",
+        title: "👑 Si somos Gobernantes (1 alianza: 20 contra 40)",
         items: [
           "Elegir como **Juez** al jugador más fuerte y con mejor criterio. No se distrae en peleas laterales.",
           "Tomar la **Torre de Energía temprano** para activar el escudo en la zona central.",
@@ -123,6 +124,7 @@ export const CANYON_STRATEGY = {
     },
     basicsTitle: "Basics",
     basics: [
+      "**Slots:** each alliance brings **at most 20 starters per match** (+ up to 10 substitutes), whether Dawnbreakers or Rulebringers. So Rulebringers play **20 against 40** (20 + 20 from the two Dawnbreaker alliances).",
       "The side with more points when time runs out (~30 min) wins. Points come from **holding buildings**; kills only disrupt the enemy.",
       "Each base has **6,000 durability**. At 0 it returns to its starting point and you lose time.",
       "Skills cost **energy**: earned by capturing, garrisoning, healing, kills, collecting point boxes and holding Power Stations.",
@@ -162,7 +164,7 @@ export const CANYON_STRATEGY = {
     ],
     factions: {
       dawn: {
-        title: "🌅 If we are Dawnbreakers (2 alliances vs 1)",
+        title: "🌅 If we are Dawnbreakers (2 alliances: 20 + 20 vs 20)",
         items: [
           "**Before the battle**, agree with the allied alliance who takes what (e.g. we take the left side + Lab, they take the right) and how you'll talk.",
           "In phase 1, **pressure many buildings at once**: we outnumber them. Warehouses are usually free.",
@@ -172,7 +174,7 @@ export const CANYON_STRATEGY = {
         ],
       },
       rule: {
-        title: "👑 If we are Rulebringers (1 alliance vs 2)",
+        title: "👑 If we are Rulebringers (1 alliance: 20 vs 40)",
         items: [
           "Make the strongest player with the best judgment the **Judicator**. They stay out of side fights.",
           "Take the **Power Tower early** to activate the central shield.",

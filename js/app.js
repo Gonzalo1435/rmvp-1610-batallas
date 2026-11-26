@@ -452,6 +452,7 @@ function viewStrategy(ev) {
     ${viewPlan(ev)}
     <div class="card"><h3>${esc(C.phasesTitle)}</h3>${list(C.phases[ours])}</div>
     <div class="card"><h3>${esc(C.factions[ours].title)}</h3>${list(C.factions[ours].items)}</div>
+    <div class="card"><h3>${esc(C.basicsTitle)}</h3>${list(C.basics)}</div>
     <p class="hint">ℹ️ ${esc(C.disclaimer)}</p>
     <div class="teams">${teamNotes}</div>
     <div class="card"><h3>${esc(C.pointsTitle)}</h3><div class="list"><table><tbody>
@@ -462,8 +463,7 @@ function viewStrategy(ev) {
     <div class="card"><h3>${esc(C.teleportTitle)}</h3><ul class="guide check">${C.teleport.map((x) => `<li>${md(x)}</li>`).join("")}</ul></div>
     <div class="card subs-card"><h3>${esc(C.subsTitle)}</h3>${list(C.subs)}
       <h4>${esc(C.msgTitle)}</h4>${copyBox(C.msgOut)}${copyBox(C.msgIn)}</div>
-    <details class="card"><summary><b>${esc(C.factions[other].title)}</b></summary>${list(C.factions[other].items)}</details>
-    <div class="card"><h3>${esc(C.basicsTitle)}</h3>${list(C.basics)}</div>`;
+    <details class="card"><summary><b>${esc(C.factions[other].title)}</b></summary>${list(C.phases[other])}${list(C.factions[other].items)}</details>`;
 }
 
 /* --- settings --- */
