@@ -198,3 +198,12 @@ button.tag.tap:hover { border-color: var(--gold); background: #2a2414; }
 .pname { display: inline-block; background: var(--panel2); border: 1px solid var(--line); border-radius: 7px; padding: 1px 7px; margin: 2px 2px 2px 0; font-size: .8rem; }
 
 footer.ver { text-align: center; color: var(--muted); font-size: .72rem; padding: 0 0 24px; }
+
+/* map with labeled background: compact markers on top of each building */
+.map.labeled .obj { min-width: 0; max-width: 130px; padding: 3px 7px; background: rgba(15,19,26,.62); border-width: 2px; border-color: rgba(255,255,255,.55); }
+.map.labeled .obj .obj-name { display: none; }
+.map.labeled .obj.sel .obj-name { display: block; }
+.map.labeled .obj:not(.has) .obj-cnt { display: none; }
+.obj-plus { font-weight: 900; font-size: .9rem; line-height: 1; color: #fff; }
+.map.labeled .obj.has .obj-ppl { color: #fff; font-weight: 700; font-size: .66rem; }
+.map.has-bg { cursor: pointer; }

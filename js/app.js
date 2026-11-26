@@ -5,7 +5,7 @@ import { EVENT_TYPES, suggestRole } from "./eventTypes.js";
 import { SEED_MEMBERS } from "./seed.js";
 import { CANYON_STRATEGY } from "./strategy.js";
 
-const APP_VERSION = "v2026.11.25-3";
+const APP_VERSION = "v2026.11.25-4";
 /* ---------------- state & helpers ---------------- */
 const S = {
   ready: false,
@@ -298,7 +298,7 @@ function viewMap(ev) {
     <div class="map t-${esc(ev.type)} ${S.maps[ev.type]?.img ? "has-bg" : ""}" id="map">
       ${(ev.objectives || []).map((o) => { const ps = onObj(o.id); return `
         <div class="obj ${S.ui.selObj === o.id ? "sel" : ""} ${ps.length ? "has" : ""}" data-obj="${esc(o.id)}" style="left:${o.x}%;top:${o.y}%">
-          <div class="obj-name">${esc(L(o))}</div><div class="obj-cnt">${ps.length}</div>
+          <div class="obj-name">${esc(L(o))}</div><div class="obj-cnt">${ps.length}</div>${ps.length ? "" : `<div class="obj-plus">＋</div>`}
           ${ps.length ? `<div class="obj-ppl">${ps.slice(0, 4).map((m) => esc(m.name)).join("<br>")}${ps.length > 4 ? "<br>+" + (ps.length - 4) : ""}</div>` : ""}
         </div>`; }).join("")}
     </div>
@@ -337,6 +337,13 @@ function viewPlan(ev) {
   </div>`;
 }
 
+function scrollToPanel() {
+  // En celular el panel queda bajo el mapa: llevarlo a la vista para asignar enseguida.
+  setTimeout(() => {
+    const p = document.querySelector(".objpanel");
+    if (p && p.getBoundingClientRect().top > window.innerHeight - 120) p.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, 30);
+}
 function applyMapBg(evId) {
   const ev = currentEvent(evId), map = document.getElementById("map");
   if (!map || !ev) return;
@@ -347,6 +354,7 @@ function applyMapBg(evId) {
   else if (def) ({ src, w, h } = def);
   if (!src) return;
   map.classList.add("has-bg");
+  map.classList.toggle("labeled", !up?.img && !!def?.labeled);
   map.style.backgroundImage = `url("${src}")`;
   if (w && h) map.style.aspectRatio = `${w} / ${h}`;
 }
@@ -377,6 +385,18 @@ function shrinkImage(file) {
 function attachMapDrag(evId) {
   const map = document.getElementById("map");
   if (!map) return;
+  // Tocar cualquier parte del mapa (el edificio o su cartel) selecciona el objetivo más cercano.
+  map.addEventListener("click", (e) => {
+    if (e.target.closest(".obj")) return;
+    const ev = currentEvent(evId), r = map.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * 100, y = ((e.clientY - r.top) / r.height) * 100;
+    let best = null, bd = 1e9;
+    for (const o of ev?.objectives || []) {
+      const d = Math.hypot((o.x - x) * r.width / 100, (o.y - y) * r.height / 100);
+      if (d < bd) { bd = d; best = o; }
+    }
+    if (best && bd < Math.max(70, r.width * 0.14)) { S.ui.selObj = best.id; render(true); scrollToPanel(); }
+  });
   map.querySelectorAll(".obj").forEach((node) => {
     node.addEventListener("pointerdown", (e) => {
       const id = node.dataset.obj;
@@ -400,7 +420,7 @@ function attachMapDrag(evId) {
           const ev = currentEvent(evId);
           const objectives = (ev.objectives || []).map((o) => o.id === id ? { ...o, x: +node.dataset.nx, y: +node.dataset.ny } : o);
           safe(() => db.set("events", evId, { objectives }));
-        } else { S.ui.selObj = S.ui.selObj === id ? null : id; render(true); }
+        } else { S.ui.selObj = S.ui.selObj === id ? null : id; render(true); if (S.ui.selObj) scrollToPanel(); }
       };
       node.addEventListener("pointermove", move);
       node.addEventListener("pointerup", up);
@@ -561,7 +581,13 @@ const actions = {
   },
   mapTeam(el) { S.ui.mapTeam = el.dataset.k; render(true); },
   selObj(el) { S.ui.selObj = el.dataset.id || null; render(true); },
-  setObj(el) { safe(() => db.set(evPath(), el.dataset.id, { [el.dataset.field || "objective"]: el.dataset.obj })); },
+  setObj(el) {
+    const m = memberById(el.dataset.id), ev = currentEvent(route().id);
+    safe(async () => {
+      await db.set(evPath(), el.dataset.id, { [el.dataset.field || "objective"]: el.dataset.obj });
+      if (el.dataset.obj && m && ev) toast(`✓ ${m.name} → ${objName(ev, el.dataset.obj)}`);
+    });
+  },
   setPhase(el) { S.ui.phase = el.dataset.k; render(true); },
   copyText(el) {
     navigator.clipboard?.writeText(el.dataset.text).then(() => toast("✓"), () => toast(el.dataset.text));
